@@ -21,12 +21,14 @@ on:
 
 jobs:
   check-secrets:
-    # Use your self-hosted runner that is connected to your private network.
+    # Use your ephemeral advanced-networking runner that is connected to your private network.
+    # Ensure 'css-new-runner2' is actually a label present on that ephemeral runner.
     runs-on: [css-new-runner2]
     outputs:
       secrets-valid: ${{ steps.secrets-valid.outputs.isvalid }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v3.5.3
+
       - id: secrets-valid
         env:
           azure-webapp-name: ${{ secrets.AZURE_WEBAPP_NAME }}
@@ -39,10 +41,10 @@ jobs:
     needs: [check-secrets]
     if: needs.check-secrets.outputs.secrets-valid == 'true'
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v3.5.3
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v4.6.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -63,7 +65,7 @@ jobs:
         run: zip -r app.zip .
 
       - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v3.1.2
         with:
           name: python-app
           path: app.zip
@@ -74,18 +76,18 @@ jobs:
     if: needs.check-secrets.outputs.secrets-valid == 'true'
     steps:
       - name: Download artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v3.1.2
         with:
           name: python-app
 
       - name: Azure Login
-        uses: azure/login@v1
+        uses: azure/login@v1.4.6
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
-        uses: azure/webapps-deploy@v2
+        uses: azure/webapps-deploy@v2.7.1
         with:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           package: app.zip
@@ -93,4 +95,3 @@ jobs:
       - name: Validate deployment
         run: |
           curl -f https://${{ secrets.AZURE_WEBAPP_NAME }}.azurewebsites.net
-
