@@ -21,8 +21,7 @@ on:
 
 jobs:
   check-secrets:
-    # Replace 'css-new-runner2' with the actual label(s) your ephemeral runner provides
-    runs-on: [css-new-runner2]
+    runs-on: [css-new-runner2]  # Make sure your ephemeral runner actually has this label
     outputs:
       secrets-valid: ${{ steps.secrets-valid.outputs.isvalid }}
     steps:
@@ -80,14 +79,14 @@ jobs:
           name: python-app
 
       - name: Azure Login
-        # Pin to a Node16-compatible version if ephemeral runner requires it
         uses: azure/login@v1.5.0
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
-        uses: azure/webapps-deploy@v2.8.0
+        # Pin to a valid tag, e.g. v2.7.3 or just v2
+        uses: azure/webapps-deploy@v2.7.3
         with:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           package: app.zip
