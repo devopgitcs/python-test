@@ -21,13 +21,12 @@ on:
 
 jobs:
   check-secrets:
-    # Use your ephemeral advanced-networking runner label here
-    # Make sure 'css-new-runner2' actually matches the ephemeral runner's label(s).
+    # Replace 'css-new-runner2' with the actual label(s) your ephemeral runner provides
     runs-on: [css-new-runner2]
     outputs:
       secrets-valid: ${{ steps.secrets-valid.outputs.isvalid }}
     steps:
-      - uses: actions/checkout@v3.6.0
+      - uses: actions/checkout@v3
 
       - id: secrets-valid
         env:
@@ -41,10 +40,10 @@ jobs:
     needs: [check-secrets]
     if: needs.check-secrets.outputs.secrets-valid == 'true'
     steps:
-      - uses: actions/checkout@v3.6.0
+      - uses: actions/checkout@v3
 
       - name: Set up Python
-        uses: actions/setup-python@v4.7.0
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -65,7 +64,7 @@ jobs:
         run: zip -r app.zip .
 
       - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v3.3.0
+        uses: actions/upload-artifact@v4
         with:
           name: python-app
           path: app.zip
@@ -76,11 +75,12 @@ jobs:
     if: needs.check-secrets.outputs.secrets-valid == 'true'
     steps:
       - name: Download artifact
-        uses: actions/download-artifact@v3.3.0
+        uses: actions/download-artifact@v4
         with:
           name: python-app
 
       - name: Azure Login
+        # Pin to a Node16-compatible version if ephemeral runner requires it
         uses: azure/login@v1.5.0
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
