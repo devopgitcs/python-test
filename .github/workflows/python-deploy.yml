@@ -21,13 +21,13 @@ on:
 
 jobs:
   check-secrets:
-    # Use your ephemeral advanced-networking runner that is connected to your private network.
-    # Ensure 'css-new-runner2' is actually a label present on that ephemeral runner.
+    # Use your ephemeral advanced-networking runner label here
+    # Make sure 'css-new-runner2' actually matches the ephemeral runner's label(s).
     runs-on: [css-new-runner2]
     outputs:
       secrets-valid: ${{ steps.secrets-valid.outputs.isvalid }}
     steps:
-      - uses: actions/checkout@v3.5.3
+      - uses: actions/checkout@v3.6.0
 
       - id: secrets-valid
         env:
@@ -41,10 +41,10 @@ jobs:
     needs: [check-secrets]
     if: needs.check-secrets.outputs.secrets-valid == 'true'
     steps:
-      - uses: actions/checkout@v3.5.3
+      - uses: actions/checkout@v3.6.0
 
       - name: Set up Python
-        uses: actions/setup-python@v4.6.0
+        uses: actions/setup-python@v4.7.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -65,7 +65,7 @@ jobs:
         run: zip -r app.zip .
 
       - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v3.1.2
+        uses: actions/upload-artifact@v3.3.0
         with:
           name: python-app
           path: app.zip
@@ -76,18 +76,18 @@ jobs:
     if: needs.check-secrets.outputs.secrets-valid == 'true'
     steps:
       - name: Download artifact
-        uses: actions/download-artifact@v3.1.2
+        uses: actions/download-artifact@v3.3.0
         with:
           name: python-app
 
       - name: Azure Login
-        uses: azure/login@v1.4.6
+        uses: azure/login@v1.5.0
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
-        uses: azure/webapps-deploy@v2.7.1
+        uses: azure/webapps-deploy@v2.8.0
         with:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           package: app.zip
