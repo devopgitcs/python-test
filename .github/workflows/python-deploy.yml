@@ -21,7 +21,7 @@ on:
 
 jobs:
   check-secrets:
-    runs-on: [css-new-runner2]  # Make sure your ephemeral runner actually has this label
+    runs-on: [css-new-runner2]  # Ensure this label matches your ephemeral runner's label(s)
     outputs:
       secrets-valid: ${{ steps.secrets-valid.outputs.isvalid }}
     steps:
@@ -85,8 +85,7 @@ jobs:
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
-        # Pin to a valid tag, e.g. v2.7.3 or just v2
-        uses: azure/webapps-deploy@v2.7.3
+        uses: azure/webapps-deploy@v2.7.1   # <-- Use this if it exists, otherwise fallback to @v2
         with:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           package: app.zip
