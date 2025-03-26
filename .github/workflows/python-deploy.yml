@@ -85,7 +85,7 @@ jobs:
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
-        uses: azure/webapps-deploy@v2.7.1   # <-- Use this if it exists, otherwise fallback to @v2
+        uses: azure/webapps-deploy@v2   # <-- Use this if it exists, otherwise fallback to @v2
         with:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           package: app.zip
