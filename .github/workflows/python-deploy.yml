@@ -1,4 +1,4 @@
-name: Deploy Python App to Azure
+name: Deploy Python App to Azure (OIDC)
 
 env:
   AZURE_WEBAPP_PACKAGE_PATH: '.' 
@@ -11,8 +11,10 @@ defaults:
   run:
     working-directory: '.'
 
+# IMPORTANT: we must enable 'id-token: write' so that GitHub can issue an OIDC token
 permissions:
   contents: read
+  id-token: write
 
 on:
   push:
@@ -21,7 +23,7 @@ on:
 
 jobs:
   check-secrets:
-    runs-on: [css-new-runner2]  # Ensure this label matches your ephemeral runner's label(s)
+    runs-on: [css-new-runner2]  # Ensure this matches your ephemeral runner's label(s)
     outputs:
       secrets-valid: ${{ steps.secrets-valid.outputs.isvalid }}
     steps:
@@ -78,14 +80,18 @@ jobs:
         with:
           name: python-app
 
-      - name: Azure Login
+      - name: Azure Login (OIDC)
         uses: azure/login@v1.5.0
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          # These must match your Azure AD App Registration and Tenant
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}     # The App Registration's Application (client) ID
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}     # The Directory (tenant) ID
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+          # No 'creds:' or 'client-secret:' needed, because OIDC uses the federated credential
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
-        uses: azure/webapps-deploy@v2   # <-- Use this if it exists, otherwise fallback to @v2
+        uses: azure/webapps-deploy@v2
         with:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           package: app.zip
