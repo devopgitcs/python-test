@@ -22,7 +22,7 @@ on:
 jobs:
   check-secrets:
     # Use your self-hosted runner that is connected to your private network.
-    runs-on: self-hosted
+    runs-on: [css-new-runner]
     outputs:
       secrets-valid: ${{ steps.secrets-valid.outputs.isvalid }}
     steps:
@@ -35,7 +35,7 @@ jobs:
         run: echo "isvalid=true" >> $GITHUB_OUTPUT
 
   build:
-    runs-on: ubuntu-latest
+    runs-on: [css-new-runner]
     needs: [check-secrets]
     if: needs.check-secrets.outputs.secrets-valid == 'true'
     steps:
@@ -69,7 +69,7 @@ jobs:
           path: app.zip
 
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: [css-new-runner]
     needs: [build, check-secrets]
     if: needs.check-secrets.outputs.secrets-valid == 'true'
     steps:
