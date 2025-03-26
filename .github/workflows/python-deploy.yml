@@ -92,4 +92,4 @@ jobs:
 
       - name: Validate deployment
         run: |
-          curl -f https://${{ secrets.AZURE_WEBAPP_NAME }}.azurewebsites.net
+          curl -f https://${{ secrets.AZURE_WEBAPP_NAME }}-fcbqbkbnb5g9axa3.eastus-01.azurewebsites.net
