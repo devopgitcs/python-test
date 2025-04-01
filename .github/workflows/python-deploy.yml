@@ -23,7 +23,7 @@ on:
 
 jobs:
   check-secrets:
-    runs-on: [css-new-runner2]  # Ensure this matches your ephemeral runner's label(s)
+    runs-on: [css-new-runner2]
     outputs:
       secrets-valid: ${{ steps.secrets-valid.outputs.isvalid }}
     steps:
