@@ -86,14 +86,24 @@ jobs:
         with:
           name: python-app
 
-      # Optional: Test connectivity to a private endpoint (if configured)
+      # Test network connectivity to Private Endpoint (if configured)
       - name: Test network connectivity to Private Endpoint
         run: |
           az network private-endpoint-connection show \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --name ${{ secrets.AZURE_PRIVATE_ENDPOINT_NAME }} || echo "Private endpoint check skipped"
+            --name ${{ secrets.AZURE_PRIVATE_ENDPOINT_NAME }} \
+            --type Microsoft.Web/sites \
+            --resource-name ${{ secrets.AZURE_WEBAPP_NAME }} || echo "Private endpoint check skipped or failed"
 
-      # Deploy to Production if environment is "production" (default slot)
+      # Azure login via OIDC: this step authenticates Azure CLI for subsequent deployment steps.
+      - name: Azure Login (OIDC)
+        uses: azure/login@v1.5.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Conditional Deployment: if production, deploy without slot-name; else deploy to the specified slot.
       - name: Deploy to Azure Web App (Production)
         if: matrix.environment == 'production'
         id: deploy-to-webapp-prod
@@ -102,7 +112,6 @@ jobs:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
 
-      # Deploy to a non-production slot (dev, qa, or staging)
       - name: Deploy to Azure Web App Slot
         if: matrix.environment != 'production'
         id: deploy-to-webapp-slot
@@ -112,14 +121,13 @@ jobs:
           slot-name: ${{ matrix.environment }}
           package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
 
-      # Validate deployment in Production slot
+      # Validate deployment by checking the deployed URL
       - name: Validate deployment (Production)
         if: matrix.environment == 'production'
         run: |
           sleep 10
           curl -s https://${{ secrets.AZURE_WEBAPP_NAME }}.azurewebsites.net --connect-timeout 5 || echo "Unable to access production app"
 
-      # Validate deployment in non-production slot
       - name: Validate deployment (Slot)
         if: matrix.environment != 'production'
         run: |
