@@ -127,7 +127,7 @@ jobs:
         if: matrix.environment == 'production'
         run: |
           sleep 10
-          curl -s https://${{ secrets.AZURE_WEBAPP_NAME }}-bgd8ageyeca6e8ff.eastus-01.azurewebsites.net --connect-timeout 5 || exit 1
+          curl -s https://${{ secrets.AZURE_WEBAPP_NAME }}-fcbqbkbnb5g9axa3.eastus-01.azurewebsites.net --connect-timeout 5 || exit 1
 
       # Validate deployment in non-production slot
       - name: Validate deployment (Slot)
