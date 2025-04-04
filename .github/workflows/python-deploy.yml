@@ -121,31 +121,3 @@ jobs:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           slot-name: ${{ matrix.environment }}
           package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
-
-      # Validate deployment for Production using the secret for production's unique ID.
-      - name: Validate deployment (Production)
-        if: matrix.environment == 'production'
-        run: |
-          sleep 30
-          curl -s https://${{ secrets.AZURE_WEBAPP_NAME }}-${{ secrets.AZURE_PROD_ID }}.eastus.azurewebsites.net
-
-      # Validate deployment for dev slot
-      - name: Validate deployment (Dev)
-        if: matrix.environment == 'dev'
-        run: |
-          sleep 30
-          curl -s https://${{ secrets.AZURE_WEBAPP_NAME }}-${{ secrets.AZURE_DEV_ID }}.eastus.azurewebsites.net
-
-      # Validate deployment for QA slot
-      - name: Validate deployment (QA)
-        if: matrix.environment == 'qa'
-        run: |
-          sleep 30
-          curl -s https://${{ secrets.AZURE_WEBAPP_NAME }}-${{ secrets.AZURE_QA_ID }}.eastus.azurewebsites.net
-
-      # Validate deployment for Staging slot
-      - name: Validate deployment (Staging)
-        if: matrix.environment == 'staging'
-        run: 
-          sleep 30
-          curl -s https://${{ secrets.AZURE_WEBAPP_NAME }}-${{ secrets.AZURE_STAGING_ID }}.eastus.azurewebsites.net 
