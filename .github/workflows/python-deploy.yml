@@ -79,7 +79,7 @@ jobs:
     if: needs.check-secrets.outputs.secrets-valid == 'true'
     strategy:
       matrix:
-        environment: [ production, dev, qa, staging ]
+        environment: [ production, dev, staging ]
     steps:
       - name: Download artifact
         uses: actions/download-artifact@v4
