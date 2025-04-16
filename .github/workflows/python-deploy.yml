@@ -3,9 +3,8 @@ name: Deploy Python App to Azure (OIDC) with Slots
 env:
   AZURE_WEBAPP_PACKAGE_PATH: 'app.zip'
   PYTHON_VERSION: '3.9'
-  AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-  AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
-  RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+  # The Key Vault name from which to fetch secrets
+  AZURE_KEYVAULT_NAME: 'kv-appdev-Dev-04'  # Update with your Key Vault name
 
 defaults:
   run:
@@ -21,28 +20,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  check-secrets:
-    runs-on: css-new-runner2
-    outputs:
-      secrets-valid: ${{ steps.secrets-valid.outputs.isvalid }}
-    steps:
-      - uses: actions/checkout@v3
-
-      - id: secrets-valid
-        env:
-          azure-webapp-name: ${{ secrets.AZURE_WEBAPP_NAME }}
-          azure-subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-        run: |
-          if [ -z "$azure-webapp-name" ] || [ -z "$azure-subscription-id" ]; then
-            echo "isvalid=false" >> $GITHUB_OUTPUT
-          else
-            echo "isvalid=true" >> $GITHUB_OUTPUT
-          fi
-
   build:
-    runs-on: css-new-runner2
-    needs: check-secrets
-    if: needs.check-secrets.outputs.secrets-valid == 'true'
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
@@ -58,7 +37,6 @@ jobs:
 
       - name: Run tests
         run: |
-          # Start the app in the background and test its response.
           python app.py &
           sleep 3
           curl -f http://localhost:8000
@@ -74,9 +52,8 @@ jobs:
           path: app.zip
 
   deploy:
-    runs-on: css-new-runner2
-    needs: [build, check-secrets]
-    if: needs.check-secrets.outputs.secrets-valid == 'true'
+    needs: build
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         environment: [ production, dev, staging ]
@@ -86,38 +63,56 @@ jobs:
         with:
           name: python-app
 
-      # Authenticate with Azure using OIDC
+      # Authenticate with Azure using OIDC.
+      # The following values are provided as repository variables (or hard-coded) 
+      # because they are needed to authenticate and are not considered sensitive.
       - name: Azure Login (OIDC)
         uses: azure/login@v1.5.0
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ secret.AZURE_CLIENT_ID }}         # Set as repository variable (non-secret)
+          tenant-id: ${{ secret.AZURE_TENANT_ID }}
+          subscription-id: ${{ secret.AZURE_SUBSCRIPTION_ID }}
 
-      # Test network connectivity to the Private Endpoint
+      # Now fetch all other configuration values from Key Vault.
+      - name: Fetch secrets from Key Vault
+        id: fetch_secrets
+        run: |
+          echo "Fetching secrets from Key Vault: $AZURE_KEYVAULT_NAME"
+          export AZURE_CLIENT_ID=$(az keyvault secret show --vault-name "$AZURE_KEYVAULT_NAME" --name "AZURE-CLIENT-ID" --query value -o tsv)
+          export AZURE_TENANT_ID=$(az keyvault secret show --vault-name "$AZURE_KEYVAULT_NAME" --name "AZURE-TENANT-ID" --query value -o tsv)
+          export AZURE_SUBSCRIPTION_ID=$(az keyvault secret show --vault-name "$AZURE_KEYVAULT_NAME" --name "AZURE-SUBSCRIPTION-ID" --query value -o tsv)
+          export AZURE_WEBAPP_NAME=$(az keyvault secret show --vault-name "$AZURE_KEYVAULT_NAME" --name "AZURE-WEBAPP-NAME" --query value -o tsv)
+          export AZURE_PRIVATE_ENDPOINT_NAME=$(az keyvault secret show --vault-name "$AZURE_KEYVAULT_NAME" --name "AZURE-PRIVATE-ENDPOINT-NAME" --query value -o tsv)
+          export AZURE_RESOURCE_GROUP=$(az keyvault secret show --vault-name "$AZURE_KEYVAULT_NAME" --name "AZURE-RESOURCE-GROUP" --query value -o tsv)
+          echo "AZURE_CLIENT_ID=${AZURE_CLIENT_ID}" >> $GITHUB_ENV
+          echo "AZURE_TENANT_ID=${AZURE_TENANT_ID}" >> $GITHUB_ENV
+          echo "AZURE_SUBSCRIPTION_ID=${AZURE_SUBSCRIPTION_ID}" >> $GITHUB_ENV
+          echo "AZURE_WEBAPP_NAME=${AZURE_WEBAPP_NAME}" >> $GITHUB_ENV
+          echo "AZURE_PRIVATE_ENDPOINT_NAME=${AZURE_PRIVATE_ENDPOINT_NAME}" >> $GITHUB_ENV
+          echo "AZURE_RESOURCE_GROUP=${AZURE_RESOURCE_GROUP}" >> $GITHUB_ENV
+
+      # Test network connectivity to the Private Endpoint.
       - name: Test network connectivity to Private Endpoint
         run: |
           az network private-endpoint-connection show \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --name ${{ secrets.AZURE_PRIVATE_ENDPOINT_NAME }} \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "$AZURE_PRIVATE_ENDPOINT_NAME" \
             --type Microsoft.Web/sites \
-            --resource-name ${{ secrets.AZURE_WEBAPP_NAME }}
+            --resource-name "$AZURE_WEBAPP_NAME"
 
-      # Deploy to Production slot if environment is "production" (default slot)
+      # Deploy to Production slot if environment is "production" (default slot).
       - name: Deploy to Azure Web App (Production)
         if: matrix.environment == 'production'
-        id: deploy-to-webapp-prod
         uses: azure/webapps-deploy@v2
         with:
-          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
           package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
 
-      # Deploy to a non-production slot (dev, qa, or staging)
+      # Deploy to a non-production slot (dev, qa, or staging).
       - name: Deploy to Azure Web App Slot
         if: matrix.environment != 'production'
-        id: deploy-to-webapp-slot
         uses: azure/webapps-deploy@v2
         with:
-          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
           slot-name: ${{ matrix.environment }}
           package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
