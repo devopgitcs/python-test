@@ -21,7 +21,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: css-new-runner2
     steps:
       - uses: actions/checkout@v3
 
@@ -53,7 +53,7 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: css-new-runner2
     strategy:
       matrix:
         environment: [ production, dev, staging ]
@@ -69,9 +69,9 @@ jobs:
       - name: Azure Login (OIDC)
         uses: azure/login@v1.5.0
         with:
-          client-id: ${{ secret.AZURE_CLIENT_ID }}         # Set as repository variable (non-secret)
-          tenant-id: ${{ secret.AZURE_TENANT_ID }}
-          subscription-id: ${{ secret.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}         # Set as repository variable (non-secret)
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       # Now fetch all other configuration values from Key Vault.
       - name: Fetch secrets from Key Vault
