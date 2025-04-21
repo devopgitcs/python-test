@@ -4,7 +4,7 @@ env:
   AZURE_WEBAPP_PACKAGE_PATH: 'app.zip'
   PYTHON_VERSION: '3.9'
   # The Key Vault name from which to fetch secrets
-  AZURE_KEYVAULT_NAME: 'kv-appdev-Dev-09'  # Update with your Key Vault name
+  AZURE_KEYVAULT_NAME: 'kv-appdev-Dev-11'  # Update with your Key Vault name
 
 defaults:
   run:
