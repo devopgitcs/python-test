@@ -4,8 +4,8 @@ env:
   AZURE_WEBAPP_PACKAGE_PATH: 'app.zip'
   PYTHON_VERSION: '3.9'
   AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-  AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
-  RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+  AZURE_WEBAPP_NAME:    ${{ secrets.AZURE_WEBAPP_NAME }}
+  RESOURCE_GROUP:       ${{ secrets.AZURE_RESOURCE_GROUP }}
 
 defaults:
   run:
@@ -13,7 +13,7 @@ defaults:
 
 permissions:
   contents: read
-  id-token: write
+  id-token:  write
 
 on:
   push:
@@ -30,7 +30,7 @@ jobs:
 
       - id: secrets-valid
         env:
-          azure-webapp-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          azure-webapp-name:    ${{ secrets.AZURE_WEBAPP_NAME }}
           azure-subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         run: |
           if [ -z "$azure-webapp-name" ] || [ -z "$azure-subscription-id" ]; then
@@ -40,9 +40,9 @@ jobs:
           fi
 
   build:
-    runs-on: css-new-runner2
     needs: check-secrets
     if: needs.check-secrets.outputs.secrets-valid == 'true'
+    runs-on: css-new-runner2
     steps:
       - uses: actions/checkout@v3
 
@@ -58,58 +58,52 @@ jobs:
 
       - name: Run tests
         run: |
-          # Start the app in the background and test its response.
           python app.py &
           sleep 3
           curl -f http://localhost:8000
           echo "Tests passed!"
 
-      - name: Package application for deployment
+      - name: Package application
         run: zip -r app.zip .
 
-      - name: Upload artifact for deployment job
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: python-app
           path: app.zip
 
   deploy:
-    runs-on: css-new-runner2
-    needs: [build, check-secrets]
+    needs: [check-secrets, build]
     if: needs.check-secrets.outputs.secrets-valid == 'true'
+    runs-on: css-new-runner2
     strategy:
       matrix:
-        environment: [ production, staging ]
+        environment: [production, staging]
+
     steps:
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
           name: python-app
 
-      # Authenticate with Azure using OIDC
       - name: Azure Login (OIDC)
         uses: azure/login@v1.5.0
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          client-id:       ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      
-      # Deploy to Production slot if environment is "production" (default slot)
-      - name: Deploy to Azure Web App (Production)
+      - name: Deploy to Production slot
         if: matrix.environment == 'production'
-        id: deploy-to-webapp-prod
         uses: azure/webapps-deploy@v2
         with:
-          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
-          package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          package:  ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
 
-      # Deploy to a non-production slot (dev, qa, or staging)
-      - name: Deploy to Azure Web App Slot
-        if: matrix.environment != 'production'
-        id: deploy-to-webapp-slot
+      - name: Deploy to Staging slot
+        if: matrix.environment == 'staging'
         uses: azure/webapps-deploy@v2
         with:
-          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
-          slot-name: ${{ matrix.environment }}
-          package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+          app-name:   ${{ env.AZURE_WEBAPP_NAME }}
+          slot-name:  staging
+          package:    ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
