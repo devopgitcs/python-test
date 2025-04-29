@@ -1,11 +1,11 @@
-name: Deploy Python App to Azure (OIDC) with Slots
+name: Deploy Python App to Azure (OIDC) with Slots and Slot Swap
 
 env:
   AZURE_WEBAPP_PACKAGE_PATH: 'app.zip'
   PYTHON_VERSION: '3.9'
   AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-  AZURE_WEBAPP_NAME:    ${{ secrets.AZURE_WEBAPP_NAME }}
-  RESOURCE_GROUP:       ${{ secrets.AZURE_RESOURCE_GROUP }}
+  AZURE_WEBAPP_NAME:       ${{ secrets.AZURE_WEBAPP_NAME }}
+  RESOURCE_GROUP:          ${{ secrets.AZURE_RESOURCE_GROUP }}
 
 defaults:
   run:
@@ -72,13 +72,10 @@ jobs:
           name: python-app
           path: app.zip
 
-  deploy:
+  deploy-staging:
     needs: [check-secrets, build]
     if: needs.check-secrets.outputs.secrets-valid == 'true'
     runs-on: css-new-runner2
-    strategy:
-      matrix:
-        environment: [production, staging]
 
     steps:
       - name: Download artifact
@@ -93,17 +90,41 @@ jobs:
           tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Deploy to Production slot
-        if: matrix.environment == 'production'
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          package:  ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+      - name: Stop Production Slot
+        run: |
+          az webapp stop --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }}
 
-      - name: Deploy to Staging slot
-        if: matrix.environment == 'staging'
+      - name: Deploy to Staging Slot
         uses: azure/webapps-deploy@v2
         with:
-          app-name:   ${{ env.AZURE_WEBAPP_NAME }}
+          app-name:   ${{ env.AZURE_WEBAPP_NAME }}-staging
           slot-name:  staging
           package:    ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+
+  approve-and-swap:
+    needs: deploy-staging
+    if: needs.check-secrets.outputs.secrets-valid == 'true'
+    runs-on: css-new-runner2
+    environment:
+      name: production   # Manual approval triggered here
+      url: https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net
+
+    steps:
+      - name: Azure Login (OIDC)
+        uses: azure/login@v1.5.0
+        with:
+          client-id:       ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Start Production Slot Before Swap
+        run: |
+          az webapp start --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }}
+
+      - name: Swap Staging Slot into Production
+        run: |
+          az webapp deployment slot swap \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --slot staging \
+            --target-slot production
