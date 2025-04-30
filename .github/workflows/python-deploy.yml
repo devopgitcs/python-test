@@ -76,8 +76,7 @@ jobs:
     needs: [check-secrets, build]
     if: needs.check-secrets.outputs.secrets-valid == 'true'
     runs-on: css-new-runner2
-    environment:
-      name: staging
+
     steps:
       - name: Download artifact
         uses: actions/download-artifact@v4
@@ -102,13 +101,16 @@ jobs:
           slot-name:  staging
           package:    ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
 
+      
+
   approve-and-swap:
     needs: deploy-staging
     if: needs.check-secrets.outputs.secrets-valid == 'true'
     runs-on: css-new-runner2
     environment:
-      name: production
+      name: production   # Manual approval triggered here
       url: https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net
+
     steps:
       - name: Azure Login (OIDC)
         uses: azure/login@v1.5.0
@@ -121,11 +123,11 @@ jobs:
         run: |
           az webapp start --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }}
 
-      - name: Start Staging Slot Before Swap
+      - name: Start Staging Slot Before Swap (Required!)
         run: |
           az webapp start --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }} --slot staging
 
-      - name: Swap Staging into Production
+      - name: Swap Staging Slot into Production
         run: |
           az webapp deployment slot swap \
             --resource-group ${{ env.RESOURCE_GROUP }} \
@@ -133,15 +135,7 @@ jobs:
             --slot staging \
             --target-slot production
 
-      - name: Register Deployment in Azure UI
-        run: |
-          az webapp deployment source config-zip \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --name ${{ env.AZURE_WEBAPP_NAME }} \
-            --src ${{ env.AZURE_WEBAPP_PACKAGE_PATH }} \
-            --slot production || echo "Skip zip push; metadata registered"
-
-      - name: Stop Staging Slot After Swap
+      - name: Stop Staging Slot After Swap (Optional)
         run: |
           az webapp stop --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }} --slot staging
 
