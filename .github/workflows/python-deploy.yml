@@ -101,6 +101,10 @@ jobs:
           slot-name:  staging
           package:    ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
 
+      - name: Start Staging Slot After Swap
+        run: |
+          az webapp start --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }} --slot staging
+
   approve-and-swap:
     needs: deploy-staging
     if: needs.check-secrets.outputs.secrets-valid == 'true'
