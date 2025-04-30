@@ -117,9 +117,9 @@ jobs:
           tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Start Production Slot Before Swap
+      - name: Stop Staging Slot Before Swap
         run: |
-          az webapp start --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }}
+          az webapp stop --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }} --slot staging
 
       - name: Swap Staging Slot into Production
         run: |
@@ -128,3 +128,7 @@ jobs:
             --name ${{ env.AZURE_WEBAPP_NAME }} \
             --slot staging \
             --target-slot production
+
+      - name: Start Production Slot After Swap
+        run: |
+          az webapp start --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }}
